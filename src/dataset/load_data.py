@@ -8,6 +8,7 @@ from os import path as path
 
 DATAPATH = path.dirname(path.abspath(__file__)) + '/data/'
 
+
 def load_fb100(filename):
     # e.g. filename = Rutgers89 or Cornell5 or Wisconsin87 or Amherst41
     # columns are: student/faculty, gender, major,
@@ -18,8 +19,10 @@ def load_fb100(filename):
     metadata = mat['local_info']
     return A, metadata
 
+
 def load_twitch(lang):
-    assert lang in ('DE', 'ENGB', 'ES', 'FR', 'PTBR', 'RU', 'TW'), 'Invalid dataset'
+    assert lang in ('DE', 'ENGB', 'ES', 'FR', 'PTBR',
+                    'RU', 'TW'), 'Invalid dataset'
     filepath = f"data/twitch/{lang}"
     label = []
     node_ids = []
@@ -34,7 +37,7 @@ def load_twitch(lang):
             # handle FR case of non-unique rows
             if node_id not in uniq_ids:
                 uniq_ids.add(node_id)
-                label.append(int(row[2]=="True"))
+                label.append(int(row[2] == "True"))
                 node_ids.append(int(row[5]))
 
     node_ids = np.array(node_ids, dtype=np.int)
@@ -49,24 +52,24 @@ def load_twitch(lang):
     src = np.array(src)
     targ = np.array(targ)
     label = np.array(label)
-    inv_node_ids = {node_id:idx for (idx, node_id) in enumerate(node_ids)}
+    inv_node_ids = {node_id: idx for (idx, node_id) in enumerate(node_ids)}
     reorder_node_ids = np.zeros_like(node_ids)
     for i in range(label.shape[0]):
         reorder_node_ids[i] = inv_node_ids[i]
-    
+
     n = label.shape[0]
-    A = scipy.sparse.csr_matrix((np.ones(len(src)), 
+    A = scipy.sparse.csr_matrix((np.ones(len(src)),
                                  (np.array(src), np.array(targ))),
-                                shape=(n,n))
-    features = np.zeros((n,3170))
+                                shape=(n, n))
+    features = np.zeros((n, 3170))
     for node, feats in j.items():
         if int(node) >= n:
             continue
         features[int(node), np.array(feats, dtype=int)] = 1
-    features = features[:, np.sum(features, axis=0) != 0] # remove zero cols
+    features = features[:, np.sum(features, axis=0) != 0]  # remove zero cols
     new_label = label[reorder_node_ids]
     label = new_label
-    
+
     return A, label, features
 
 
@@ -98,16 +101,19 @@ def load_pokec():
     A = scipy.sparse.csr_matrix((np.ones(len(src)), (src, targ)))
     return A, label
 
+
 def load_twitch_gamer(nodes, task="dead_account"):
     nodes = nodes.drop('numeric_id', axis=1)
-    nodes['created_at'] = nodes.created_at.replace('-', '', regex=True).astype(int)
-    nodes['updated_at'] = nodes.updated_at.replace('-', '', regex=True).astype(int)
+    nodes['created_at'] = nodes.created_at.replace(
+        '-', '', regex=True).astype(int)
+    nodes['updated_at'] = nodes.updated_at.replace(
+        '-', '', regex=True).astype(int)
     one_hot = {k: v for v, k in enumerate(nodes['language'].unique())}
     lang_encoding = [one_hot[lang] for lang in nodes['language']]
     nodes['language'] = lang_encoding
-    
+
     if task is not None:
         label = nodes[task].to_numpy()
         features = nodes.drop(task, axis=1).to_numpy()
-    
+
     return label, features

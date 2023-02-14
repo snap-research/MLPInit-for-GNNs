@@ -21,7 +21,6 @@ from tqdm import tqdm
 from utils import GB, MB, compute_tensor_bytes, get_memory_usage
 
 
-
 # from ._GraphSampling import _GraphSampling
 from .base import GraphSamplingBase
 
@@ -40,7 +39,6 @@ class GraphSAGE(GraphSamplingBase):
             else:
                 base_gnnconv = SAGEConv
 
-
         elif args.type_model == "GAT":
             if args.gnn_type == "gnn":
                 base_gnnconv = GATConv
@@ -48,7 +46,6 @@ class GraphSAGE(GraphSamplingBase):
                 base_gnnconv = GATConv_MLP
             else:
                 base_gnnconv = GATConv
-
 
         elif args.type_model == "GCN":
             if args.gnn_type == "gnn":
@@ -61,34 +58,28 @@ class GraphSAGE(GraphSamplingBase):
         else:
             raise NotImplementedError
 
-
-
-        ## build model
+        # build model
         self.convs = torch.nn.ModuleList()
         self.convs.append(base_gnnconv(self.num_feats, self.dim_hidden))
         for _ in range(self.num_layers - 2):
             self.convs.append(base_gnnconv(self.dim_hidden, self.dim_hidden))
         self.convs.append(base_gnnconv(self.dim_hidden, self.num_classes))
 
-
-        ## data load
+        # data load
         num_neighbors = [25, 10, 5, 5, 5, 5, 5, 5, 5]
-        if self.args.type_model in ["GraphSAGE", "GAT", "GCN" ]:
-            self.train_loader = NeighborSampler(data.edge_index, node_idx=train_idx, sizes=num_neighbors[: self.num_layers], 
-                                            batch_size=self.batch_size, shuffle=True, num_workers=12)
+        if self.args.type_model in ["GraphSAGE", "GAT", "GCN"]:
+            self.train_loader = NeighborSampler(data.edge_index, node_idx=train_idx, sizes=num_neighbors[: self.num_layers],
+                                                batch_size=self.batch_size, shuffle=True, num_workers=12)
         else:
             raise NotImplementedError
 
-        #reset_parameters
+        # reset_parameters
         self.saved_args = vars(args)
         self.reset_parameters()
-
 
     def reset_parameters(self):
         for conv in self.convs:
             conv.reset_parameters()
-
-
 
     def forward(self, x, adjs):
         # `train_loader` computes the k-hop neighborhood of a batch of nodes,
@@ -101,15 +92,13 @@ class GraphSAGE(GraphSamplingBase):
 
             x_target = x[: size[1]]  # Target nodes are always placed first.
 
-            x = self.convs[i]( (x, x_target), edge_index )
+            x = self.convs[i]((x, x_target), edge_index)
             # x = self.convs[i]( x_target,  edge_index )
             if i != self.num_layers - 1:
                 x = F.relu(x)
                 x = F.dropout(x, p=self.dropout, training=self.training)
 
         return x
-
-
 
     def train_net(self, input_dict):
 
@@ -120,11 +109,11 @@ class GraphSAGE(GraphSamplingBase):
         loss_op = input_dict["loss_op"]
 
         total_loss = total_correct = 0
-        for batch_size, n_id, adjs in tqdm( self.train_loader ):
+        for batch_size, n_id, adjs in tqdm(self.train_loader):
             # `adjs` holds a list of `(edge_index, e_id, size)` tuples.
 
             adjs = [adj.to(device) for adj in adjs]
-            
+
             optimizer.zero_grad()
             out = self(x[n_id], adjs)
             if isinstance(loss_op, torch.nn.NLLLoss):
@@ -136,7 +125,8 @@ class GraphSAGE(GraphSamplingBase):
 
             total_loss += float(loss.item())
             if isinstance(loss_op, torch.nn.NLLLoss):
-                total_correct += int(out.argmax(dim=-1).eq(y[n_id[:batch_size]]).sum())
+                total_correct += int(out.argmax(dim=-
+                                     1).eq(y[n_id[:batch_size]]).sum())
             else:
                 total_correct += int(out.eq(y[n_id[:batch_size]]).sum())
 

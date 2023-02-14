@@ -40,7 +40,7 @@ def even_quantile_labels(vals, nclasses, verbose=True):
     """ partitions vals into nclasses by a quantile based split,
     where the first class is less than the 1/nclasses quantile,
     second class is less than the 2/nclasses quantile, and so on
-    
+
     vals is np array
     returns an np array of int class labels
     """
@@ -152,9 +152,9 @@ def gen_normalized_adjs(dataset):
     D_isqrt = deg.pow(-0.5)
     D_isqrt[D_isqrt == float('inf')] = 0
 
-    DAD = D_isqrt.view(-1,1) * adj * D_isqrt.view(1,-1)
-    DA = D_isqrt.view(-1,1) * D_isqrt.view(-1,1) * adj
-    AD = adj * D_isqrt.view(1,-1) * D_isqrt.view(1,-1)
+    DAD = D_isqrt.view(-1, 1) * adj * D_isqrt.view(1, -1)
+    DA = D_isqrt.view(-1, 1) * D_isqrt.view(-1, 1) * adj
+    AD = adj * D_isqrt.view(1, -1) * D_isqrt.view(1, -1)
     return DAD, DA, AD
 
 
@@ -178,7 +178,7 @@ def eval_rocauc(y_true, y_pred):
     y_true = y_true.detach().cpu().numpy()
     if y_true.shape[1] == 1:
         # use the predicted class for single-class classification
-        y_pred = F.softmax(y_pred, dim=-1)[:,1].unsqueeze(1).cpu().numpy()
+        y_pred = F.softmax(y_pred, dim=-1)[:, 1].unsqueeze(1).cpu().numpy()
     else:
         y_pred = y_pred.detach().cpu().numpy()
 
@@ -187,7 +187,7 @@ def eval_rocauc(y_true, y_pred):
         if np.sum(y_true[:, i] == 1) > 0 and np.sum(y_true[:, i] == 0) > 0:
             is_labeled = y_true[:, i] == y_true[:, i]
             score = roc_auc_score(y_true[is_labeled, i], y_pred[is_labeled, i])
-                                
+
             rocauc_list.append(score)
 
     if len(rocauc_list) == 0:
@@ -228,9 +228,9 @@ def load_fixed_splits(dataset, sub_dataset):
     if not os.path.exists(f'./data/splits/{name}-splits.npy'):
         assert dataset in splits_drive_url.keys()
         gdd.download_file_from_google_drive(
-            file_id=splits_drive_url[dataset], \
-            dest_path=f'./data/splits/{name}-splits.npy', showsize=True) 
-    
+            file_id=splits_drive_url[dataset],
+            dest_path=f'./data/splits/{name}-splits.npy', showsize=True)
+
     splits_lst = np.load(f'./data/splits/{name}-splits.npy', allow_pickle=True)
     for i in range(len(splits_lst)):
         for key in splits_lst[i]:
@@ -240,17 +240,17 @@ def load_fixed_splits(dataset, sub_dataset):
 
 
 dataset_drive_url = {
-    'twitch-gamer_feat' : '1fA9VIIEI8N0L27MSQfcBzJgRQLvSbrvR',
-    'twitch-gamer_edges' : '1XLETC6dG3lVl7kDmytEJ52hvDMVdxnZ0',
-    'snap-patents' : '1ldh23TSY1PwXia6dU0MYcpyEgX-w3Hia', 
-    'pokec' : '1dNs5E7BrWJbgcHeQ_zuy5Ozp2tRCWG0y', 
-    'yelp-chi': '1fAXtTVQS4CfEk4asqrFw9EPmlUPGbGtJ', 
-    'wiki_views': '1p5DlVHrnFgYm3VsNIzahSsvCD424AyvP', # Wiki 1.9M 
-    'wiki_edges': '14X7FlkjrlUgmnsYtPwdh-gGuFla4yb5u', # Wiki 1.9M 
-    'wiki_features': '1ySNspxbK-snNoAZM7oxiWGvOnTRdSyEK' # Wiki 1.9M
+    'twitch-gamer_feat': '1fA9VIIEI8N0L27MSQfcBzJgRQLvSbrvR',
+    'twitch-gamer_edges': '1XLETC6dG3lVl7kDmytEJ52hvDMVdxnZ0',
+    'snap-patents': '1ldh23TSY1PwXia6dU0MYcpyEgX-w3Hia',
+    'pokec': '1dNs5E7BrWJbgcHeQ_zuy5Ozp2tRCWG0y',
+    'yelp-chi': '1fAXtTVQS4CfEk4asqrFw9EPmlUPGbGtJ',
+    'wiki_views': '1p5DlVHrnFgYm3VsNIzahSsvCD424AyvP',  # Wiki 1.9M
+    'wiki_edges': '14X7FlkjrlUgmnsYtPwdh-gGuFla4yb5u',  # Wiki 1.9M
+    'wiki_features': '1ySNspxbK-snNoAZM7oxiWGvOnTRdSyEK'  # Wiki 1.9M
 }
 
 splits_drive_url = {
-    'snap-patents' : '12xbBRqd8mtG_XkNLH8dRRNZJvVM4Pw-N', 
-    'pokec' : '1ZhpAiyTNc0cE_hhgyiqxnkKREHK7MK-_', 
+    'snap-patents': '12xbBRqd8mtG_XkNLH8dRRNZJvVM4Pw-N',
+    'pokec': '1ZhpAiyTNc0cE_hhgyiqxnkKREHK7MK-_',
 }

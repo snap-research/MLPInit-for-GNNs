@@ -1,3 +1,4 @@
+from .non_homo_dataset import load_nc_dataset
 from cmath import log
 from ogb.nodeproppred import Evaluator, PygNodePropPredDataset
 import os
@@ -15,24 +16,23 @@ import logging
 logger = logging.getLogger()
 
 
-from .non_homo_dataset import load_nc_dataset
-
-
-
-def sample_subgraph( data, x, y, split_masks, evaluator, processed_dir, ratio = 0.1 ):
+def sample_subgraph(data, x, y, split_masks, evaluator, processed_dir, ratio=0.1):
 
     subgrpah_train_mask_idx = split_masks["train"].nonzero().numpy().ravel()
-    subgrpah_train_mask_idx = np.random.choice(subgrpah_train_mask_idx, size=int( ratio * len( subgrpah_train_mask_idx ) ), replace=False)
+    subgrpah_train_mask_idx = np.random.choice(subgrpah_train_mask_idx, size=int(
+        ratio * len(subgrpah_train_mask_idx)), replace=False)
     # print( len(subgrpah_train_mask_idx) )
     subgrpah_train_mask = np.zeros(data.x.shape[0], dtype=int)
     subgrpah_train_mask[subgrpah_train_mask_idx] = 1
-    subgrpah_train_mask = torch.tensor( subgrpah_train_mask.astype( np.bool8 ) )
+    subgrpah_train_mask = torch.tensor(subgrpah_train_mask.astype(np.bool8))
 
-    subgraph_mask = split_masks["valid"] + split_masks["test"] + subgrpah_train_mask
+    subgraph_mask = split_masks["valid"] + \
+        split_masks["test"] + subgrpah_train_mask
 
-    edge_index, edge_attr = subgraph( subgraph_mask, data.edge_index, relabel_nodes=True  )
+    edge_index, edge_attr = subgraph(
+        subgraph_mask, data.edge_index, relabel_nodes=True)
 
-    data.x = data.x[ subgraph_mask ]
+    data.x = data.x[subgraph_mask]
     data.edge_index = edge_index
     data.edge_attr = edge_attr
     data.train_mask = split_masks["train"][subgraph_mask]
@@ -50,11 +50,10 @@ def sample_subgraph( data, x, y, split_masks, evaluator, processed_dir, ratio = 
     split_masks["valid"] = data.valid_mask
     split_masks["test"] = data.test_mask
 
-    return data, x, y, split_masks, evaluator, processed_dir 
-    
+    return data, x, y, split_masks, evaluator, processed_dir
 
 
-def load_data(dataset, dataset_dir = '/home/xhan2/data/gnn_space', ratio = None):
+def load_data(dataset, dataset_dir='/home/xhan2/data/gnn_space', ratio=None):
 
     if dataset == "Products":
         # root = os.path.join(os.path.dirname(os.path.realpath(__file__)), "..", "dataset")
@@ -74,9 +73,10 @@ def load_data(dataset, dataset_dir = '/home/xhan2/data/gnn_space', ratio = None)
         y = data.y = data.y.squeeze()
 
         if ratio:
-            data, x, y, split_masks, evaluator, processed_dir = sample_subgraph( data, x, y, split_masks, evaluator, processed_dir, ratio = ratio )
+            data, x, y, split_masks, evaluator, processed_dir = sample_subgraph(
+                data, x, y, split_masks, evaluator, processed_dir, ratio=ratio)
 
-        logging.info( f"data: {data}" )
+        logging.info(f"data: {data}")
 
     elif dataset == "ogbn-papers100M":
         # root = os.path.join(os.path.dirname(os.path.realpath(__file__)), "..", "dataset")
@@ -97,10 +97,9 @@ def load_data(dataset, dataset_dir = '/home/xhan2/data/gnn_space', ratio = None)
 
         if ratio:
             if ratio < 1:
-                data, x, y, split_masks, evaluator, processed_dir = sample_subgraph( data, x, y, split_masks, evaluator, processed_dir, ratio = ratio )
-        logging.info( f"data: {data}" )
-
-
+                data, x, y, split_masks, evaluator, processed_dir = sample_subgraph(
+                    data, x, y, split_masks, evaluator, processed_dir, ratio=ratio)
+        logging.info(f"data: {data}")
 
     elif dataset == "ogbn-arxiv":
         # root = os.path.join(os.path.dirname(os.path.realpath(__file__)), "..", "dataset")
@@ -110,7 +109,7 @@ def load_data(dataset, dataset_dir = '/home/xhan2/data/gnn_space', ratio = None)
         split_idx = dataset.get_idx_split()
         evaluator = Evaluator(name="ogbn-arxiv")
         data = dataset[0]
-        data.edge_index = to_undirected( data.edge_index  )
+        data.edge_index = to_undirected(data.edge_index)
 
         split_masks = {}
         for split in ["train", "valid", "test"]:
@@ -123,11 +122,9 @@ def load_data(dataset, dataset_dir = '/home/xhan2/data/gnn_space', ratio = None)
 
         if ratio:
             if ratio < 1:
-                data, x, y, split_masks, evaluator, processed_dir = sample_subgraph( data, x, y, split_masks, evaluator, processed_dir, ratio = ratio )
-        logging.info( f"data: {data}" )
-
-
-
+                data, x, y, split_masks, evaluator, processed_dir = sample_subgraph(
+                    data, x, y, split_masks, evaluator, processed_dir, ratio=ratio)
+        logging.info(f"data: {data}")
 
     elif dataset in ["Reddit", "Flickr", "Yelp"]:
         path = os.path.join(dataset_dir, dataset)
@@ -146,9 +143,7 @@ def load_data(dataset, dataset_dir = '/home/xhan2/data/gnn_space', ratio = None)
         # N = data.train_mask.shape[0]
         # data.edge_idx = torch.arange(0, E)
         # data.node_idx = torch.arange(0, N)
-        logging.info( f"data: {data}" )
-
-
+        logging.info(f"data: {data}")
 
     elif dataset in ["AmazonProducts"]:
         path = os.path.join(dataset_dir, dataset)
@@ -162,7 +157,7 @@ def load_data(dataset, dataset_dir = '/home/xhan2/data/gnn_space', ratio = None)
         split_masks["valid"] = data.val_mask
         split_masks["test"] = data.test_mask
         x = data.x
-        y = data.y.type( torch.float32 )
+        y = data.y.type(torch.float32)
         # E = data.edge_index.shape[1]
         # N = data.train_mask.shape[0]
         # data.edge_idx = torch.arange(0, E)
@@ -202,11 +197,9 @@ def load_data(dataset, dataset_dir = '/home/xhan2/data/gnn_space', ratio = None)
         x = data.x
         y = data.y = data.y.squeeze()
 
-        
-
     elif dataset in ["arxiv-year", "fb100", "wiki", "pokec", "snap-patents", "twitch-gamer", "genius"]:
         # root = os.path.join(dataset_dir, dataset)
-        dataset = load_nc_dataset( dataname= dataset )
+        dataset = load_nc_dataset(dataname=dataset)
         processed_dir = None
         evaluator = None
         split_idx = dataset.get_idx_split()
@@ -222,10 +215,10 @@ def load_data(dataset, dataset_dir = '/home/xhan2/data/gnn_space', ratio = None)
             data[f"{split}_mask"] = mask
             split_masks[f"{split}"] = data[f"{split}_mask"]
 
-        data.edge_index = dataset.graph[ "edge_index" ]
-        data.edge_index = to_undirected( data.edge_index  )
-        data.num_nodes = dataset.graph[ "num_nodes" ]
-        data.x = dataset.graph[ "node_feat" ] 
+        data.edge_index = dataset.graph["edge_index"]
+        data.edge_index = to_undirected(data.edge_index)
+        data.num_nodes = dataset.graph["num_nodes"]
+        data.x = dataset.graph["node_feat"]
         data.y = dataset.label.reshape(-1)
 
         x = data.x
@@ -234,9 +227,8 @@ def load_data(dataset, dataset_dir = '/home/xhan2/data/gnn_space', ratio = None)
     else:
         raise Exception(f"the dataset of {dataset} has not been implemented")
 
-    logger.info( f"data.x.shape: {x.shape}" )
-    logger.info( f"data.y.shape: {y.shape}"  )
-    logger.info( f"data.edge_index.shape: {data.edge_index.shape}" )
+    logger.info(f"data.x.shape: {x.shape}")
+    logger.info(f"data.y.shape: {y.shape}")
+    logger.info(f"data.edge_index.shape: {data.edge_index.shape}")
 
     return data, x, y, split_masks, evaluator, processed_dir
-

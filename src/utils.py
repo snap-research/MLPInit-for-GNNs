@@ -39,13 +39,12 @@ def compute_tensor_bytes(tensors):
     return ret
 
 
-
-
-def random_sample_edges( adj, n, exclude):
+def random_sample_edges(adj, n, exclude):
     itr = sample_forever(adj, exclude=exclude)
     return [next(itr) for _ in range(n)]
 
-def sample_forever( adj, exclude):
+
+def sample_forever(adj, exclude):
     """Randomly random sample edges from adjacency matrix, `exclude` is a set
     which contains the edges we do not want to sample and the ones already sampled
     """
@@ -57,6 +56,3 @@ def sample_forever( adj, exclude):
             yield t
             exclude.add(t)
             exclude.add((t[1], t[0]))
-
-
-

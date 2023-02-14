@@ -32,13 +32,13 @@ class NCDataset(object):
             - root (str): root directory to store the dataset folder
             - meta_dict: dictionary that stores all the meta-information about data. Default is None, 
                     but when something is passed, it uses its information. Useful for debugging for external contributers.
-        
+
         Usage after construction: 
-        
+
         split_idx = dataset.get_idx_split()
         train_idx, valid_idx, test_idx = split_idx["train"], split_idx["valid"], split_idx["test"]
         graph, label = dataset[0]
-        
+
         Where the graph is a dictionary of the following form: 
         dataset.graph = {'edge_index': edge_index,
                          'edge_feat': None,
@@ -111,7 +111,7 @@ def load_nc_dataset(dataname, sub_dataname=''):
     elif dataname == "genius":
         dataset = load_genius()
     elif dataname == "twitch-gamer":
-        dataset = load_twitch_gamer_dataset() 
+        dataset = load_twitch_gamer_dataset()
     elif dataname == "wiki":
         dataset = load_wiki()
     else:
@@ -120,7 +120,8 @@ def load_nc_dataset(dataname, sub_dataname=''):
 
 
 def load_twitch_dataset(lang):
-    assert lang in ('DE', 'ENGB', 'ES', 'FR', 'PTBR', 'RU', 'TW'), 'Invalid dataset'
+    assert lang in ('DE', 'ENGB', 'ES', 'FR', 'PTBR',
+                    'RU', 'TW'), 'Invalid dataset'
     A, label, features = load_twitch(lang)
     dataset = NCDataset(lang)
     edge_index = torch.tensor(A.nonzero(), dtype=torch.long)
@@ -236,7 +237,7 @@ def load_pokec_mat():
     """
     if not path.exists(f'{DATAPATH}pokec.mat'):
         gdd.download_file_from_google_drive(
-            file_id=dataset_drive_url['pokec'], \
+            file_id=dataset_drive_url['pokec'],
             dest_path=f'{DATAPATH}pokec.mat', showsize=True)
 
     fulldata = scipy.io.loadmat(f'{DATAPATH}pokec.mat')
@@ -261,7 +262,7 @@ def load_snap_patents_mat(nclass=5):
         p = dataset_drive_url['snap-patents']
         print(f"Snap patents url: {p}")
         gdd.download_file_from_google_drive(
-            file_id=dataset_drive_url['snap-patents'], \
+            file_id=dataset_drive_url['snap-patents'],
             dest_path=f'{DATAPATH}snap_patents.mat', showsize=True)
 
     fulldata = scipy.io.loadmat(f'{DATAPATH}snap_patents.mat')
@@ -286,7 +287,7 @@ def load_snap_patents_mat(nclass=5):
 def load_yelpchi_dataset():
     if not path.exists(f'{DATAPATH}YelpChi.mat'):
         gdd.download_file_from_google_drive(
-            file_id=dataset_drive_url['yelp-chi'], \
+            file_id=dataset_drive_url['yelp-chi'],
             dest_path=f'{DATAPATH}YelpChi.mat', showsize=True)
     fulldata = scipy.io.loadmat(f'{DATAPATH}YelpChi.mat')
     A = fulldata['homo']
@@ -365,8 +366,6 @@ def load_genius():
     # fulldata = scipy.io.loadmat(f'data/genius.mat')
     fulldata = scipy.io.loadmat(f'{DATAPATH}/genius.mat')
 
-    
-
     edge_index = torch.tensor(fulldata['edge_index'], dtype=torch.long)
     node_feat = torch.tensor(fulldata['node_feat'], dtype=torch.float)
     label = torch.tensor(fulldata['label'], dtype=torch.long).squeeze()
@@ -389,7 +388,7 @@ def load_twitch_gamer_dataset(task="mature", normalize=True):
         gdd.download_file_from_google_drive(
             file_id=dataset_drive_url['twitch-gamer_edges'],
             dest_path=f'{DATAPATH}twitch-gamer_edges.csv', showsize=True)
-    
+
     edges = pd.read_csv(f'{DATAPATH}twitch-gamer_edges.csv')
     nodes = pd.read_csv(f'{DATAPATH}twitch-gamer_feat.csv')
     edge_index = torch.tensor(edges.to_numpy()).t().type(torch.LongTensor)
@@ -412,33 +411,32 @@ def load_wiki():
 
     if not path.exists(f'{DATAPATH}wiki_features2M.pt'):
         gdd.download_file_from_google_drive(
-            file_id=dataset_drive_url['wiki_features'], \
+            file_id=dataset_drive_url['wiki_features'],
             dest_path=f'{DATAPATH}wiki_features2M.pt', showsize=True)
-    
+
     if not path.exists(f'{DATAPATH}wiki_edges2M.pt'):
         gdd.download_file_from_google_drive(
-            file_id=dataset_drive_url['wiki_edges'], \
+            file_id=dataset_drive_url['wiki_edges'],
             dest_path=f'{DATAPATH}wiki_edges2M.pt', showsize=True)
 
     if not path.exists(f'{DATAPATH}wiki_views2M.pt'):
         gdd.download_file_from_google_drive(
-            file_id=dataset_drive_url['wiki_views'], \
+            file_id=dataset_drive_url['wiki_views'],
             dest_path=f'{DATAPATH}wiki_views2M.pt', showsize=True)
 
-
-    dataset = NCDataset("wiki") 
+    dataset = NCDataset("wiki")
     features = torch.load(f'{DATAPATH}wiki_features2M.pt')
     edges = torch.load(f'{DATAPATH}wiki_edges2M.pt').T
     row, col = edges
     print(f"edges shape: {edges.shape}")
-    label = torch.load(f'{DATAPATH}wiki_views2M.pt') 
+    label = torch.load(f'{DATAPATH}wiki_views2M.pt')
     num_nodes = label.shape[0]
 
     print(f"features shape: {features.shape[0]}")
     print(f"Label shape: {label.shape[0]}")
-    dataset.graph = {"edge_index": edges, 
-                     "edge_feat": None, 
-                     "node_feat": features, 
+    dataset.graph = {"edge_index": edges,
+                     "edge_feat": None,
+                     "node_feat": features,
                      "num_nodes": num_nodes}
-    dataset.label = label 
-    return dataset 
+    dataset.label = label
+    return dataset

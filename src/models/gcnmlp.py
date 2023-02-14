@@ -47,6 +47,7 @@ from typing import Any
 import torch
 from torch import Tensor
 
+
 def glorot(value: Any):
     if isinstance(value, Tensor):
         stdv = math.sqrt(6.0 / (value.size(-2) + value.size(-1)))
@@ -94,6 +95,7 @@ class SAGEConv(MessagePassing):
         **kwargs (optional): Additional arguments of
             :class:`torch_geometric.nn.conv.MessagePassing`.
     """
+
     def __init__(self, in_channels: Union[int, Tuple[int, int]],
                  out_channels: int, normalize: bool = False,
                  bias: bool = True, **kwargs):  # yapf: disable
@@ -148,8 +150,6 @@ class SAGEConv(MessagePassing):
                                    self.out_channels)
 
 
-
-
 class SAGEConv_MLP(MessagePassing):
     r"""The GraphSAGE operator from the `"Inductive Representation Learning on
     Large Graphs" <https://arxiv.org/abs/1706.02216>`_ paper
@@ -186,6 +186,7 @@ class SAGEConv_MLP(MessagePassing):
         - **outputs:** node features :math:`(|\mathcal{V}|, F_{out})` or
           :math:`(|\mathcal{V_t}|, F_{out})` if bipartite
     """
+
     def __init__(self, in_channels: Union[int, Tuple[int, int]],
                  out_channels: int, normalize: bool = False,
                  root_weight: bool = True, bias: bool = True, **kwargs):
@@ -212,7 +213,6 @@ class SAGEConv_MLP(MessagePassing):
         if self.root_weight:
             self.lin_r.reset_parameters()
 
-
     def forward(self, x: Union[Tensor, OptPairTensor], edge_index: Adj,
                 size: Size = None) -> Tensor:
         """"""
@@ -233,8 +233,6 @@ class SAGEConv_MLP(MessagePassing):
 
         return out
 
-
-
     def message(self, x_j: Tensor) -> Tensor:
         return x_j
 
@@ -242,11 +240,6 @@ class SAGEConv_MLP(MessagePassing):
                               x: OptPairTensor) -> Tensor:
         adj_t = adj_t.set_value(None, layout=None)
         return matmul(adj_t, x[0], reduce=self.aggr)
-
-
-
-
-
 
 
 class GraphConv_MLP(MessagePassing):
@@ -286,6 +279,7 @@ class GraphConv_MLP(MessagePassing):
         - **output:** node features :math:`(|\mathcal{V}|, F_{out})` or
           :math:`(|\mathcal{V}_t|, F_{out})` if bipartite
     """
+
     def __init__(
         self,
         in_channels: Union[int, Tuple[int, int]],
@@ -335,8 +329,6 @@ class GraphConv_MLP(MessagePassing):
     def message_and_aggregate(self, adj_t: SparseTensor,
                               x: OptPairTensor) -> Tensor:
         return matmul(adj_t, x[0], reduce=self.aggr)
-
-
 
 
 class GATConv(MessagePassing):
@@ -510,11 +502,6 @@ class GATConv(MessagePassing):
     def __repr__(self) -> str:
         return (f'{self.__class__.__name__}({self.in_channels}, '
                 f'{self.out_channels}, heads={self.heads})')
-
-
-
-
-
 
 
 class GATConv_MLP(MessagePassing):
@@ -696,9 +683,6 @@ class GATConv_MLP(MessagePassing):
                 f'{self.out_channels}, heads={self.heads})')
 
 
-
-
-
 @torch.jit._overload
 def gcn_norm(edge_index, edge_weight=None, num_nodes=None, improved=False,
              add_self_loops=True, dtype=None):
@@ -752,7 +736,7 @@ def gcn_norm(edge_index, edge_weight=None, num_nodes=None, improved=False,
 
 
 class GCNConv_MLP(MessagePassing):
-   
+
     _cached_edge_index: Optional[Tuple[Tensor, Tensor]]
     _cached_adj_t: Optional[SparseTensor]
 
@@ -833,8 +817,6 @@ class GCNConv_MLP(MessagePassing):
         return matmul(adj_t, x, reduce=self.aggr)
 
 
-
-
 class GCNConv(MessagePassing):
 
     _cached_edge_index: Optional[Tuple[Tensor, Tensor]]
@@ -882,7 +864,6 @@ class GCNConv(MessagePassing):
         # print( "x[1].shape:", x[1].shape )
         # input()
 
-
         x = x[1]
 
         if self.normalize:
@@ -908,7 +889,7 @@ class GCNConv(MessagePassing):
                 else:
                     edge_index = cache
 
-        x = self.lin( x )
+        x = self.lin(x)
 
         # propagate_type: (x: Tensor, edge_weight: OptTensor)
         out = self.propagate(edge_index, x=x, edge_weight=edge_weight,
@@ -926,11 +907,9 @@ class GCNConv(MessagePassing):
         return matmul(adj_t, x, reduce=self.aggr)
 
 
-
-
 class my_GCNConv(MessagePassing):
     def __init__(self, in_channels: Union[int, Tuple[int, int]],
-                 out_channels: int, normalize: bool = False, 
+                 out_channels: int, normalize: bool = False,
                  root_weight: bool = True, bias: bool = True, **kwargs):
         kwargs.setdefault('aggr', 'mean')
         super().__init__(**kwargs)
@@ -954,7 +933,6 @@ class my_GCNConv(MessagePassing):
         if self.root_weight:
             self.lin_r.reset_parameters()
 
-
     def forward(self, x: Union[Tensor, OptPairTensor], edge_index: Adj,
                 size: Size = None) -> Tensor:
         """"""
@@ -977,8 +955,6 @@ class my_GCNConv(MessagePassing):
                               x: OptPairTensor) -> Tensor:
         adj_t = adj_t.set_value(None, layout=None)
         return matmul(adj_t, x[0], reduce=self.aggr)
-
-
 
 
 class my_GCNConv_MLP(MessagePassing):
