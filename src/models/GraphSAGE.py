@@ -1,27 +1,13 @@
-import json
-# from signal import raise_signal
-import time
-
 import torch
 import torch.nn.functional as F
-from torch.nn import Linear
 from torch_geometric.loader import NeighborSampler
-# from torch_geometric.nn import SAGEConv
-from .gcnmlp import SAGEConv_MLP, GATConv_MLP, GCNConv, GATConv, my_GCNConv, SAGEConv
+from torch_geometric.nn import SAGEConv
 
-from .gcnmlp import my_GCNConv as GCNConv
-from .gcnmlp import my_GCNConv_MLP as GCNConv_MLP
-
-
-# from torch_geometric.nn import GCNConv as SAGEConv
-# from torch_geometric.nn import GraphConv as SAGEConv
+from .PeerMLP import SAGEConvMLP
+from .PeerMLP import my_GCNConv as GCNConv
+from .PeerMLP import my_GCNConvMLP as GCNConvMLP
 
 from tqdm import tqdm
-
-from utils import GB, MB, compute_tensor_bytes, get_memory_usage
-
-
-# from ._GraphSampling import _GraphSampling
 from .base import GraphSamplingBase
 
 
@@ -31,30 +17,10 @@ class GraphSAGE(GraphSamplingBase):
 
         self.args = args
 
-        if args.type_model == "GraphSAGE":
-            if args.gnn_type == "gnn":
-                base_gnnconv = SAGEConv
-            elif args.gnn_type == "mlp":
-                base_gnnconv = SAGEConv_MLP
-            else:
-                base_gnnconv = SAGEConv
-
-        elif args.type_model == "GAT":
-            if args.gnn_type == "gnn":
-                base_gnnconv = GATConv
-            elif args.gnn_type == "mlp":
-                base_gnnconv = GATConv_MLP
-            else:
-                base_gnnconv = GATConv
-
-        elif args.type_model == "GCN":
-            if args.gnn_type == "gnn":
-                base_gnnconv = GCNConv
-            elif args.gnn_type == "mlp":
-                base_gnnconv = GCNConv_MLP
-            else:
-                base_gnnconv = GCNConv
-
+        if args.gnn_model == "GraphSAGE":
+            base_gnnconv = SAGEConv if args.gnn_type == "gnn" else SAGEConvMLP
+        elif args.gnn_model == "GCN":
+            base_gnnconv = GCNConv if args.gnn_type == "gnn" else GCNConvMLP
         else:
             raise NotImplementedError
 
@@ -65,11 +31,17 @@ class GraphSAGE(GraphSamplingBase):
             self.convs.append(base_gnnconv(self.dim_hidden, self.dim_hidden))
         self.convs.append(base_gnnconv(self.dim_hidden, self.num_classes))
 
-        # data load
+        # data loading
         num_neighbors = [25, 10, 5, 5, 5, 5, 5, 5, 5]
-        if self.args.type_model in ["GraphSAGE", "GAT", "GCN"]:
-            self.train_loader = NeighborSampler(data.edge_index, node_idx=train_idx, sizes=num_neighbors[: self.num_layers],
-                                                batch_size=self.batch_size, shuffle=True, num_workers=12)
+        if self.args.gnn_model in ["GraphSAGE", "GAT", "GCN"]:
+            self.train_loader = NeighborSampler(
+                data.edge_index,
+                node_idx=train_idx,
+                sizes=num_neighbors[: self.num_layers],
+                batch_size=self.batch_size,
+                shuffle=True,
+                num_workers=12,
+            )
         else:
             raise NotImplementedError
 
@@ -125,14 +97,9 @@ class GraphSAGE(GraphSamplingBase):
 
             total_loss += float(loss.item())
             if isinstance(loss_op, torch.nn.NLLLoss):
-                total_correct += int(out.argmax(dim=-
-                                     1).eq(y[n_id[:batch_size]]).sum())
+                total_correct += int(out.argmax(dim=-1).eq(y[n_id[:batch_size]]).sum())
             else:
                 total_correct += int(out.eq(y[n_id[:batch_size]]).sum())
 
-        train_size = (
-            self.train_size
-            if isinstance(loss_op, torch.nn.NLLLoss)
-            else self.train_size * self.num_classes
-        )
+        train_size = self.train_size if isinstance(loss_op, torch.nn.NLLLoss) else self.train_size * self.num_classes
         return total_loss / len(self.train_loader), total_correct / train_size

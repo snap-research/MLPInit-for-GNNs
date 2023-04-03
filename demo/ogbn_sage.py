@@ -2,80 +2,97 @@
 # MLP init test accuracy: 0.8100 ± 0.0040
 # Random init test accuracy: 0.7982 ± 0.0041
 
-import os
 import os.path as osp
-from sklearn.metrics import roc_auc_score, average_precision_score
+from typing import Tuple, Union
 from ogb.nodeproppred import Evaluator, PygNodePropPredDataset
 import torch
 import torch.nn.functional as F
-
-from tqdm import tqdm
+from torch import Tensor
+import torch.utils.data as data_utils
 
 from torch_geometric.loader import NeighborSampler
 from torch_geometric.nn import SAGEConv
-from torch.nn import Linear
-from typing import Tuple, Union
-
-import torch.nn.functional as F
-from torch import Tensor
 from torch_geometric.nn.dense.linear import Linear
-from torch_geometric.typing import Adj, OptPairTensor, Size
-import torch.utils.data as data_utils
+from torch_geometric.typing import OptPairTensor
+
+from tqdm import tqdm
 import argparse
-import time
 
 
 parser = argparse.ArgumentParser()
-parser.add_argument('--init', type=str, default='random', choices=['random', 'mlp'])
-parser.add_argument('--dataset', type=str, default="ogbn-products", choices=["ogbn-products"])
-parser.add_argument('--dataset_dir', type=str, default="")
+parser.add_argument("--init_method", type=str, default="random", choices=["random", "mlp"])
+parser.add_argument("--dataset", type=str, default="ogbn-products", choices=["ogbn-products"])
+parser.add_argument("--batch_size", type=int, default=1024)
+parser.add_argument("--num_workers", type=int, default=4)
+parser.add_argument("--dataset_dir", type=str, default="./data")
+parser.add_argument("--num_layers", type=int, default=4)
+parser.add_argument("--hidden_channels", type=int, default=512)
 args = parser.parse_args()
-print( "args:", args )
+print("args:", args)
 
 
-device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
-root = osp.join( args.dataset_dir, args.dataset)
+device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
+root = osp.join(args.dataset_dir, args.dataset)
 
 dataset = PygNodePropPredDataset(args.dataset, root)
 split_idx = dataset.get_idx_split()
 evaluator = Evaluator(name=args.dataset)
 data = dataset[0]
-train_idx = split_idx['train']
+train_idx = split_idx["train"]
 
-X_train = data.x[ split_idx["train"] ]
-y_train = data.y[ split_idx["train"] ].reshape(-1).type(torch.long)
+x_train = data.x[split_idx["train"]]
+y_train = data.y[split_idx["train"]].reshape(-1).type(torch.long)
 
 
 x = data.x
 y = data.y.squeeze()
 
 
-
-print( "data.x.shape:", data.x.shape )
-print( "data.y.shape:", data.y.shape )
-print( "data.x.type:", x.dtype )
-print( "data.y.type:", y.dtype )
-print( "X_train.shape:", X_train.shape )
-print( "y_train.shape:", y_train.shape )
+print("data.x.shape:", data.x.shape)
+print("data.y.shape:", data.y.shape)
+print("data.x.type:", x.dtype)
+print("data.y.type:", y.dtype)
+print("x_train.shape:", x_train.shape)
+print("y_train.shape:", y_train.shape)
 
 
 y = data.y.squeeze().type(torch.long)
-print( "data.y.type:", y.dtype )
 
 
-X_y_train_mlpinit = data_utils.TensorDataset(X_train, y_train)
-X_y_all_mlpinit = data_utils.TensorDataset(x, y)
+x_y_train_mlpinit = data_utils.TensorDataset(x_train, y_train)
+x_y_all_mlpinit = data_utils.TensorDataset(x, y)
 
-train_mlpinit_loader = data_utils.DataLoader(X_y_train_mlpinit, batch_size=4096, shuffle=True, num_workers=12)
-all_mlpinit_loader = data_utils.DataLoader(X_y_all_mlpinit, batch_size=4096, shuffle=False, num_workers=12)
+train_mlpinit_loader = data_utils.DataLoader(
+    x_y_train_mlpinit,
+    batch_size=args.batch_size,
+    shuffle=True,
+    num_workers=args.num_workers,
+)
+all_mlpinit_loader = data_utils.DataLoader(
+    x_y_all_mlpinit,
+    batch_size=args.batch_size,
+    shuffle=False,
+    num_workers=args.num_workers,
+)
 
 
-class SAGEConv_like_MLP(torch.nn.Module):
-   
-    def __init__(self, in_channels: Union[int, Tuple[int, int]],
-                 out_channels: int, normalize: bool = False,
-                 root_weight: bool = True, bias: bool = True, **kwargs):
-        # kwargs.setdefault('aggr', 'mean')
+class SAGEConv_PeerMLP(torch.nn.Module):
+    """
+    A PyTorch module implementing a simplified GraphSAGE convolution-like multilayer perceptron (MLP) layer.
+
+    This layer performs a linear transformation on the input node features, optionally normalizing
+    the output and adding a root weight.
+    """
+
+    def __init__(
+        self,
+        in_channels: Union[int, Tuple[int, int]],
+        out_channels: int,
+        normalize: bool = False,
+        root_weight: bool = True,
+        bias: bool = True,
+        **kwargs,
+    ):
         super().__init__(**kwargs)
 
         self.in_channels = in_channels
@@ -97,7 +114,6 @@ class SAGEConv_like_MLP(torch.nn.Module):
         if self.root_weight:
             self.lin_r.reset_parameters()
 
-
     def forward(self, x: Union[Tensor, OptPairTensor]) -> Tensor:
         """"""
         if isinstance(x, Tensor):
@@ -111,10 +127,9 @@ class SAGEConv_like_MLP(torch.nn.Module):
             out += self.lin_r(x_r)
 
         if self.normalize:
-            out = F.normalize(out, p=2., dim=-1)
+            out = F.normalize(out, p=2.0, dim=-1)
 
         return out
-
 
 
 class MLP(torch.nn.Module):
@@ -124,10 +139,10 @@ class MLP(torch.nn.Module):
         self.num_layers = num_layers
 
         self.convs = torch.nn.ModuleList()
-        self.convs.append(SAGEConv_like_MLP(in_channels, hidden_channels))
+        self.convs.append(SAGEConv_PeerMLP(in_channels, hidden_channels))
         for _ in range(num_layers - 2):
-            self.convs.append(SAGEConv_like_MLP(hidden_channels, hidden_channels))
-        self.convs.append(SAGEConv_like_MLP(hidden_channels, out_channels))
+            self.convs.append(SAGEConv_PeerMLP(hidden_channels, hidden_channels))
+        self.convs.append(SAGEConv_PeerMLP(hidden_channels, out_channels))
 
     def reset_parameters(self):
         for conv in self.convs:
@@ -140,8 +155,6 @@ class MLP(torch.nn.Module):
             if i != self.num_layers - 1:
                 x = F.relu(x)
         return x.log_softmax(dim=-1)
-
-
 
 
 class SAGE(torch.nn.Module):
@@ -168,17 +181,15 @@ class SAGE(torch.nn.Module):
         # Target nodes are also included in the source nodes so that one can
         # easily apply skip-connections or add self-loops.
         for i, (edge_index, _, size) in enumerate(adjs):
-            x_target = x[:size[1]]  # Target nodes are always placed first.
+            x_target = x[: size[1]]  # Target nodes are always placed first.
             x = self.convs[i]((x, x_target), edge_index)
             if i != self.num_layers - 1:
                 x = F.relu(x)
         return x.log_softmax(dim=-1)
 
-
-
     def inference(self, x_all):
         pbar = tqdm(total=x_all.size(0) * self.num_layers)
-        pbar.set_description('Evaluating')
+        pbar.set_description("Evaluating")
 
         # Compute representations of nodes layer by layer, using *all*
         # available edges. This leads to faster computation in contrast to
@@ -190,7 +201,7 @@ class SAGE(torch.nn.Module):
                 edge_index, _, size = adj.to(device)
                 total_edges += edge_index.size(1)
                 x = x_all[n_id].to(device)
-                x_target = x[:size[1]]
+                x_target = x[: size[1]]
                 x = self.convs[i]((x, x_target), edge_index)
                 if i != self.num_layers - 1:
                     x = F.relu(x)
@@ -205,21 +216,24 @@ class SAGE(torch.nn.Module):
         return x_all
 
 
-
-model_mlpinit = MLP(dataset.num_features, 512, dataset.num_classes, num_layers=4)
+model_mlpinit = MLP(
+    in_channels=dataset.num_features,
+    hidden_channels=args.hidden_channels,
+    out_channels=dataset.num_classes,
+    num_layers=args.num_layers,
+)
 model_mlpinit = model_mlpinit.to(device)
-optimizer_model_mlpinit = torch.optim.Adam(model_mlpinit.parameters(), lr=0.001, weight_decay = 0.0)
-
+optimizer_model_mlpinit = torch.optim.Adam(model_mlpinit.parameters(), lr=0.001, weight_decay=0.0)
 
 
 def train_mlpinit():
     model_mlpinit.train()
     total_loss = total_correct = 0
 
-    for x, y in tqdm( train_mlpinit_loader ):
+    for x, y in tqdm(train_mlpinit_loader):
 
-        x = x.to( device )
-        y = y.to( device )
+        x = x.to(device)
+        y = y.to(device)
 
         optimizer_model_mlpinit.zero_grad()
         out = model_mlpinit(x)
@@ -242,55 +256,72 @@ def test_mlpinit():
     out_list = []
     y_list = []
 
-    for x, y in tqdm( all_mlpinit_loader ):
-        x = x.to( device )
-        y = y.to( device )
+    for x, y in tqdm(all_mlpinit_loader):
+        x = x.to(device)
+        y = y.to(device)
         out = model_mlpinit(x)
-        out_list.append( out )
-        y_list.append( y )
-
+        out_list.append(out)
+        y_list.append(y)
 
     out = torch.cat(out_list, dim=0)
     y_true = torch.cat(y_list, dim=0).cpu().unsqueeze(-1)
 
-
     y_pred = out.argmax(dim=-1, keepdim=True)
 
-    train_acc = evaluator.eval({
-        'y_true': y_true[split_idx['train']],
-        'y_pred': y_pred[split_idx['train']],
-    })['acc']
-    val_acc = evaluator.eval({
-        'y_true': y_true[split_idx['valid']],
-        'y_pred': y_pred[split_idx['valid']],
-    })['acc']
-    test_acc = evaluator.eval({
-        'y_true': y_true[split_idx['test']],
-        'y_pred': y_pred[split_idx['test']],
-    })['acc']
+    train_acc = evaluator.eval(
+        {
+            "y_true": y_true[split_idx["train"]],
+            "y_pred": y_pred[split_idx["train"]],
+        }
+    )["acc"]
+    val_acc = evaluator.eval(
+        {
+            "y_true": y_true[split_idx["valid"]],
+            "y_pred": y_pred[split_idx["valid"]],
+        }
+    )["acc"]
+    test_acc = evaluator.eval(
+        {
+            "y_true": y_true[split_idx["test"]],
+            "y_pred": y_pred[split_idx["test"]],
+        }
+    )["acc"]
 
     return train_acc, val_acc, test_acc
 
 
+train_loader = NeighborSampler(
+    data.edge_index,
+    node_idx=train_idx,
+    sizes=[25, 10, 5, 5],
+    batch_size=args.batch_size,
+    shuffle=True,
+    num_workers=args.num_workers,
+)
+subgraph_loader = NeighborSampler(
+    data.edge_index,
+    node_idx=None,
+    sizes=[-1],
+    batch_size=args.batch_size,
+    shuffle=False,
+    num_workers=args.num_workers,
+)
 
-train_loader = NeighborSampler(data.edge_index, node_idx=train_idx,
-                               sizes=[25, 10, 5, 5], batch_size=1024,
-                               shuffle=True, num_workers=12)
-subgraph_loader = NeighborSampler(data.edge_index, node_idx=None, sizes=[-1],
-                                  batch_size=4096, shuffle=False,
-                                  num_workers=12)
 
-
-model = SAGE(dataset.num_features, 512, dataset.num_classes, num_layers=4)
+model = SAGE(
+    in_channels=dataset.num_features,
+    hidden_channels=args.hidden_channels,
+    out_channels=dataset.num_classes,
+    num_layers=args.num_layers,
+)
 model = model.to(device)
-
 
 
 def train(epoch):
     model.train()
 
     pbar = tqdm(total=train_idx.size(0))
-    pbar.set_description(f'Epoch {epoch:02d}')
+    pbar.set_description(f"Epoch {epoch:02d}")
 
     total_loss = total_correct = 0
 
@@ -301,12 +332,12 @@ def train(epoch):
         optimizer.zero_grad()
 
         out = model(x[n_id].to(device), adjs)
-        loss = F.nll_loss( out, y[n_id[:batch_size]].to(device) )
+        loss = F.nll_loss(out, y[n_id[:batch_size]].to(device))
         loss.backward()
         optimizer.step()
 
         total_loss += float(loss)
-        total_correct += int(out.argmax(dim=-1).eq( y[n_id[:batch_size]].to(device) ).sum())
+        total_correct += int(out.argmax(dim=-1).eq(y[n_id[:batch_size]].to(device)).sum())
         pbar.update(batch_size)
 
     pbar.close()
@@ -315,8 +346,6 @@ def train(epoch):
     approx_acc = total_correct / train_idx.size(0)
 
     return loss, approx_acc
-
-
 
 
 @torch.no_grad()
@@ -328,62 +357,72 @@ def test():
     y_true = y.cpu().unsqueeze(-1)
     y_pred = out.argmax(dim=-1, keepdim=True)
 
-    train_acc = evaluator.eval({
-        'y_true': y_true[split_idx['train']],
-        'y_pred': y_pred[split_idx['train']],
-    })['acc']
-    val_acc = evaluator.eval({
-        'y_true': y_true[split_idx['valid']],
-        'y_pred': y_pred[split_idx['valid']],
-    })['acc']
-    test_acc = evaluator.eval({
-        'y_true': y_true[split_idx['test']],
-        'y_pred': y_pred[split_idx['test']],
-    })['acc']
+    train_acc = evaluator.eval(
+        {
+            "y_true": y_true[split_idx["train"]],
+            "y_pred": y_pred[split_idx["train"]],
+        }
+    )["acc"]
+    val_acc = evaluator.eval(
+        {
+            "y_true": y_true[split_idx["valid"]],
+            "y_pred": y_pred[split_idx["valid"]],
+        }
+    )["acc"]
+    test_acc = evaluator.eval(
+        {
+            "y_true": y_true[split_idx["test"]],
+            "y_pred": y_pred[split_idx["test"]],
+        }
+    )["acc"]
 
     return train_acc, val_acc, test_acc
 
 
 test_accs = []
 for run in range(1, 11):
-    print('')
-    print(f'Run {run:02d}:')
-    print('')
+    print("")
+    print(f"Run {run:02d}:")
+    print("")
 
-    if args.init == "random":
-        print( "using random init!" )
+    if args.init_method == "random":
+        print("using random init!")
         model.reset_parameters()
-    elif args.init == "mlp":
-        print( "using MLP init!" )
+    elif args.init_method == "mlp":
+        print("using MLP init!")
         best_val_acc_init = 0
         model_mlpinit.reset_parameters()
-        
+
         for epoch in range(1, 50):
             loss, acc = train_mlpinit()
             train_acc_init, val_acc_init, test_acc_init = test_mlpinit()
-            print(  "train_acc_init, val_acc_init, test_acc_init:", train_acc_init, val_acc_init, test_acc_init )
+            print(
+                "train_acc_init, val_acc_init, test_acc_init:",
+                train_acc_init,
+                val_acc_init,
+                test_acc_init,
+            )
 
             if val_acc_init > best_val_acc_init:
                 best_val_acc_init = val_acc_init
                 # print( train_acc_init, val_acc_init, test_acc_init )
-                print( f"saving model_mlpinit at epcoh {epoch}" )
-                torch.save(model_mlpinit.state_dict(), f'./model_mlpinit.pt' )
+                print(f"saving model_mlpinit at epcoh {epoch}")
+                torch.save(model_mlpinit.state_dict(), f"./model_mlpinit.pt")
 
-        model.load_state_dict(torch.load( f'./model_mlpinit.pt'  ))
+        model.load_state_dict(torch.load(f"./model_mlpinit.pt"))
     else:
-        print( "input init method." )
+        print("input init method.")
 
-    optimizer = torch.optim.Adam(model.parameters(), lr=0.001, weight_decay = 0.0)
+    optimizer = torch.optim.Adam(model.parameters(), lr=0.001, weight_decay=0.0)
 
     best_val_acc = final_test_acc = 0
     for epoch in range(1, 21):
         loss, acc = train(epoch)
-        print(f'Epoch {epoch:02d}, Loss: {loss:.4f}, Approx. Train: {acc:.4f}')
+        print(f"Epoch {epoch:02d}, Loss: {loss:.4f}, Approx. Train: {acc:.4f}")
 
         if epoch > 0:
             train_acc, val_acc, test_acc = test()
-            print(f'Train: {train_acc:.4f}, Val: {val_acc:.4f}, '
-                  f'Test: {test_acc:.4f}')
+            print(f"Train: {train_acc:.4f}, Val: {val_acc:.4f}, " f"Test: {test_acc:.4f}")
 
             if val_acc > best_val_acc:
                 best_val_acc = val_acc
@@ -391,5 +430,5 @@ for run in range(1, 11):
     test_accs.append(final_test_acc)
 
 test_acc = torch.tensor(test_accs)
-print('============================')
-print(f'Final Test: {test_acc.mean():.4f} ± {test_acc.std():.4f}')
+print("============================")
+print(f"Final Test: {test_acc.mean():.4f} ± {test_acc.std():.4f}")

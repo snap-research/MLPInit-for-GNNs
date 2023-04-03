@@ -6,12 +6,9 @@ import torch.nn.functional as F
 from torch_geometric.loader import GraphSAINTRandomWalkSampler as RWSampler
 
 from torch_geometric.nn import SAGEConv
-from torch_geometric.nn import GraphConv
-from .gcnmlp import GraphConv_MLP, SAGEConv_MLP
+from .PeerMLP import SAGEConvMLP
 
 from torch_geometric.utils import degree
-
-from utils import GB, MB, compute_tensor_bytes, get_memory_usage
 
 # from ._GraphSampling import _GraphSampling
 from tqdm import tqdm
@@ -28,13 +25,10 @@ class GraphSAINT(GraphSamplingBase):
         self.args = args
 
         if args.gnn_type == "gnn":
-            # base_gnnconv = GraphConv
             base_gnnconv = SAGEConv
         elif args.gnn_type == "mlp":
-            # base_gnnconv = GraphConv_MLP
-            base_gnnconv = SAGEConv_MLP
+            base_gnnconv = SAGEConvMLP
         else:
-            # base_gnnconv = GraphConv
             base_gnnconv = SAGEConv
 
         # build model
@@ -56,7 +50,7 @@ class GraphSAINT(GraphSamplingBase):
             num_steps=args.num_steps,
             save_dir=self.save_dir,
             sample_coverage=args.sample_coverage,
-            num_workers=0
+            num_workers=0,
         )
 
         # reset_parameters
@@ -96,13 +90,12 @@ class GraphSAINT(GraphSamplingBase):
             optimizer.zero_grad()
             if self.use_norm:
                 edge_weight = batch.edge_norm * batch.edge_weight
-                # print( "edge_weight.shape:", edge_weight.shape )
-                # print( "batch.edge_norm.shape:", batch.edge_norm.shape )
-                # print( "batch.edge_weight.shape:", batch.edge_weight.shape )
-                # input()
                 out = self(batch.x, batch.edge_index, edge_weight)
             else:
-                out = self(batch.x, batch.edge_index,)
+                out = self(
+                    batch.x,
+                    batch.edge_index,
+                )
 
             if isinstance(loss_op, torch.nn.NLLLoss):
                 out = F.log_softmax(out, dim=-1)
@@ -110,12 +103,11 @@ class GraphSAINT(GraphSamplingBase):
                     loss = F.nll_loss(out, batch.y, reduction="none")
                     loss = (loss * batch.node_norm)[batch.train_mask].sum()
                 else:
-                    loss = loss_op(out[batch.train_mask],
-                                   batch.y[batch.train_mask])
+                    loss = loss_op(out[batch.train_mask], batch.y[batch.train_mask])
             else:
                 loss = loss_op(
-                    out[batch.train_mask], batch.y[batch.train_mask].type_as(
-                        out)
+                    out[batch.train_mask],
+                    batch.y[batch.train_mask].type_as(out),
                 )
 
             loss.backward()
@@ -128,10 +120,6 @@ class GraphSAINT(GraphSamplingBase):
             else:
                 total_correct += int(out.eq(batch.y).sum())
 
-        train_size = (
-            self.train_size
-            if isinstance(loss_op, torch.nn.NLLLoss)
-            else self.train_size * self.num_classes
-        )
+        train_size = self.train_size if isinstance(loss_op, torch.nn.NLLLoss) else self.train_size * self.num_classes
 
         return total_loss / len(self.train_loader), total_correct / train_size

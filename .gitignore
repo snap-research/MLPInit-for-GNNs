@@ -2,3 +2,6 @@
 trash
 *.pt
 *.pyc
+ogbn-products
+ogbn-arxiv
+data

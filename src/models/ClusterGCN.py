@@ -2,13 +2,9 @@ import torch
 import torch.nn.functional as F
 from torch_geometric.data import ClusterData, ClusterLoader
 from torch_geometric.nn import SAGEConv
-from .gcnmlp import SAGEConv_MLP
+from .PeerMLP  import SAGEConvMLP
 
-# from ._GraphSampling import _GraphSampling
 from .base import GraphSamplingBase
-from utils import get_memory_usage, compute_tensor_bytes, MB, GB
-import json
-import time
 from tqdm import tqdm
 
 
@@ -17,12 +13,7 @@ class ClusterGCN(GraphSamplingBase):
     def __init__(self, args, data, train_idx, processed_dir):
         super(ClusterGCN, self).__init__(args, data, train_idx, processed_dir)
 
-        if args.gnn_type == "gnn":
-            base_gnnconv = SAGEConv
-        elif args.gnn_type == "mlp":
-            base_gnnconv = SAGEConv_MLP
-        else:
-            base_gnnconv = SAGEConv
+        base_gnnconv = SAGEConvMLP if args.gnn_type == "mlp" else SAGEConv
 
         # build model
         self.convs = torch.nn.ModuleList()
@@ -32,12 +23,14 @@ class ClusterGCN(GraphSamplingBase):
         self.convs.append(base_gnnconv(self.dim_hidden, self.num_classes))
 
         # load data
-        sample_size = max(
-            1, int(args.batch_size / (data.num_nodes / args.num_parts)))
+        sample_size = max(1, int(args.batch_size / (data.num_nodes / args.num_parts)))
         cluster_data = ClusterData(
-            data, num_parts=args.num_parts, recursive=False, save_dir=self.save_dir)
-        self.train_loader = ClusterLoader(
-            cluster_data, batch_size=sample_size, shuffle=True, num_workers=0)
+            data,
+            num_parts=args.num_parts,
+            recursive=False,
+            save_dir=self.save_dir,
+        )
+        self.train_loader = ClusterLoader(cluster_data, batch_size=sample_size, shuffle=True, num_workers=0)
 
         self.saved_args = vars(args)
         self.reset_parameters()
@@ -69,12 +62,11 @@ class ClusterGCN(GraphSamplingBase):
             out = self(batch.x, batch.edge_index)
             if isinstance(loss_op, torch.nn.NLLLoss):
                 out = F.log_softmax(out, dim=-1)
-                loss = loss_op(out[batch.train_mask],
-                               batch.y[batch.train_mask])
+                loss = loss_op(out[batch.train_mask], batch.y[batch.train_mask])
             else:
                 loss = loss_op(
-                    out[batch.train_mask], batch.y[batch.train_mask].type_as(
-                        out)
+                    out[batch.train_mask],
+                    batch.y[batch.train_mask].type_as(out),
                 )
             loss.backward()
             optimizer.step()
@@ -84,6 +76,5 @@ class ClusterGCN(GraphSamplingBase):
             else:
                 total_correct += int(out.eq(batch.y).sum())
 
-        train_size = self.train_size if isinstance(
-            loss_op, torch.nn.NLLLoss) else self.train_size * self.num_classes
+        train_size = self.train_size if isinstance(loss_op, torch.nn.NLLLoss) else self.train_size * self.num_classes
         return total_loss / len(self.train_loader), total_correct / train_size
