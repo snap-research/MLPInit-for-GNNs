@@ -7,11 +7,7 @@ Implementation for ICLR2023 paper MLPInit: Embarrassingly Simple GNN Training Ac
 
 Training graph neural networks (GNNs) on large graphs is complex and extremely time consuming. This is attributed to overheads caused by sparse matrix multiplication, which are sidestepped when training multi-layer perceptrons (MLPs) with only node features. MLPs, by ignoring graph context, are simple and faster for graph data, however they usually sacrifice prediction accuracy, limiting their applications for graph data. We observe that for most message passing-based GNNs, we can trivially derive an analog MLP (we call this a \peermlp) with an equivalent weight space, by setting the trainable parameters with the same shapes, making us curious about how do GNNs using weights from a fully trained \peermlp perform? Surprisingly, we find that GNNs initialized with such weights significantly outperform their PeerMLPs, motivating us to use PeerMLP training as a precursor, initialization step to GNN training. To this end, we propose an embarrassingly simple, yet hugely effective initialization method for GNN training acceleration, called MLPInit. Our extensive experiments on multiple large-scale graph datasets with diverse GNN architectures validate that MLPInit can accelerate the training of GNNs (up to 33× speedup on OGBN-Products) and often improve prediction performance (e.g., up to $7.97\%$ improvement for GraphSAGE across $7$ datasets for node classification, and up to $17.81\%$ improvement across $4$ datasets for link prediction on metric Hits@10).
 ### The training speed comparison of the GNNs with Random initialization and MLPInit.
-<img src="img/res.png" style="zoom:100%;" />
-
-
-
-
+<img src="img/res.png" width='800' />
 
 
 
@@ -19,7 +15,7 @@ Training graph neural networks (GNNs) on large graphs is complex and extremely t
 
 ### 2.1 We provide a self-contained [Jupyter Notebook](minimal_example_of_mlpinit.ipynb) to show the results on ogb-products dataset.
 
-<img src="img/output.png" style="zoom:80%;" />
+<img src="img/output.png" width='500' />
 
 ### 2.2 We provide the demo for MLPInit.
 
@@ -29,9 +25,9 @@ python demo/ogbn_sage.py --init_method random --dataset ogbn-products
 python demo/ogbn_sage.py --init_method mlp    --dataset ogbn-products
 ```
 
-### 2.3 We also provide the [Jupyter Notebook](gcn_peermlp_comparison.ipynb) to examine the performance of GCN wiht the weight of PeerMLP (Table 7).
+### 2.3 We also provide the [Jupyter Notebook](gcn_peermlp_comparison.ipynb) to examine the performance of GCN with the weight of PeerMLP (Table 7).
 
-<img src="img/gcn_peermlp.png" style="zoom:50%;" />
+<img src="img/gcn_peermlp.png" width='500' />
 
 
 
@@ -84,11 +80,11 @@ If you find our paper or code is useful for you research, please cite our paper.
 
 ```
 @inproceedings{han2023mlpinit,
-title={{MLPI}nit: Embarrassingly Simple {GNN} Training Acceleration with {MLP} Initialization},
-author={Xiaotian Han and Tong Zhao and Yozen Liu and Xia Hu and Neil Shah},
-booktitle={International Conference on Learning Representations},
-year={2023},
-url={https://openreview.net/forum?id=P8YIphWNEGO}
+        title={{MLPI}nit: Embarrassingly Simple {GNN} Training Acceleration with {MLP} Initialization},
+        author={Xiaotian Han and Tong Zhao and Yozen Liu and Xia Hu and Neil Shah},
+        booktitle={International Conference on Learning Representations},
+        year={2023},
+        url={https://openreview.net/forum?id=P8YIphWNEGO}
 }
 ```
 
@@ -96,7 +92,7 @@ url={https://openreview.net/forum?id=P8YIphWNEGO}
 The GNN archtectures and training code are based on https://github.com/VITA-Group/Large_Scale_GCN_Benchmarking
 
 ## 6. Contact
-Pelase contact to [Xiaotian Han](https://ahxt.github.io/) if you have any question about this code.
+Please contact to [Xiaotian Han](https://ahxt.github.io/) if you have any question about this code.
 
 
 
