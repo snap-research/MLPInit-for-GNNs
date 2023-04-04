@@ -5,12 +5,16 @@ import torch.nn.functional as F
 from sklearn.metrics import f1_score
 
 
-from models.ClusterGCN import ClusterGCN
-from models.GraphSAINT import GraphSAINT
-from models.GraphSAGE import GraphSAGE
+from models.ClusterGCNStyleSampling import ClusterGCN
+from models.GraphSAINTStyleSampling import GraphSAINT
+from models.GraphSAGEStyleSampling import GraphSAGE
 
 
 from logger import logger
+
+
+def get_model_path_from_args(args):
+    return f"{args.saved_dir}/{args.dataset}_{args.gnn_model}_{args.gnn_type}_{args.dim_hidden}_{args.num_layers}_{args.random_seed}.pt"
 
 
 class Trainer(object):
@@ -78,7 +82,6 @@ class Trainer(object):
         train_acc, valid_acc, test_acc = result
         train_loss, valid_loss, test_loss = losses
 
-
         init_dict = dict()
         init_dict["train_loss"] = train_loss
         init_dict["valid_loss"] = valid_loss
@@ -103,10 +106,7 @@ class Trainer(object):
                     best_valid_acc = valid_acc
                     best_test_acc = test_acc
                     if self.args.save_dir != "":
-                        torch.save(
-                            self.model.state_dict(),
-                            f"{self.args.save_dir}/{self.args.dataset}_{self.args.gnn_model}_{self.args.gnn_type}_{self.args.dim_hidden}_{self.args.num_layers}_{self.args.random_seed}.pt",
-                        )
+                        torch.save(self.model.state_dict(), get_model_path_from_args(self.args))
 
             epoch_dict = {}
             epoch_dict["epoch"] = epoch
@@ -195,11 +195,7 @@ class Trainer(object):
             )
         self.model.to(self.device)
 
-        self.model.load_state_dict(
-            torch.load(
-                f"{self.args.saved_dir}/{self.args.dataset}_{self.args.gnn_model}_{self.args.gnn_type}_{self.args.dim_hidden}_{self.args.num_layers}_{self.args.random_seed}.pt"
-            )
-        )
+        self.model.load_state_dict(torch.load(get_model_path_from_args(self.args)))
         (
             out,
             (train_loss, val_loss, test_loss),

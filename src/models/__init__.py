@@ -1,9 +1,9 @@
-from .ClusterGCN import ClusterGCN
-from .GraphSAGE import GraphSAGE
-from .GraphSAINT import GraphSAINT
+from .ClusterGCNStyleSampling import ClusterGCN
+from .GraphSAGEStyleSampling import GraphSAGE
+from .GraphSAINTStyleSampling import GraphSAINT
 
 __all__ = [
     "ClusterGCN",
-    "GraphSAINT",
     "GraphSAGE",
+    "GraphSAINT",
 ]
