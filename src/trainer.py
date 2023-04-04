@@ -14,7 +14,7 @@ from logger import logger
 
 
 def get_model_path_from_args(args):
-    return f"{args.saved_dir}/{args.dataset}_{args.gnn_model}_{args.gnn_type}_{args.dim_hidden}_{args.num_layers}_{args.random_seed}.pt"
+    return f"{args.save_dir}/{args.dataset}_{args.gnn_model}_{args.gnn_type}_{args.dim_hidden}_{args.num_layers}_{args.random_seed}.pt"
 
 
 class Trainer(object):
@@ -106,6 +106,7 @@ class Trainer(object):
                     best_valid_acc = valid_acc
                     best_test_acc = test_acc
                     if self.args.save_dir != "":
+                        print("saving model......")
                         torch.save(self.model.state_dict(), get_model_path_from_args(self.args))
 
             epoch_dict = {}
@@ -154,7 +155,7 @@ class Trainer(object):
 
         self.model.load_state_dict(
             torch.load(
-                f"{self.args.saved_dir}/{self.args.dataset}_{self.args.gnn_model}_{self.args.gnn_type}_{self.args.dim_hidden}_{self.args.num_layers}_{self.args.random_seed}.pt"
+                f"{self.args.save_dir}/{self.args.dataset}_{self.args.gnn_model}_{self.args.gnn_type}_{self.args.dim_hidden}_{self.args.num_layers}_{self.args.random_seed}.pt"
             )
         )
         (

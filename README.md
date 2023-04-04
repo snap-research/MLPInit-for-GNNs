@@ -1,7 +1,7 @@
 
 # MLPInit: Embarrassingly Simple GNN Training Acceleration with MLP Initialization
 
-Implementation for ICLR2023 paper MLPInit: Embarrassingly Simple GNN Training Acceleration with MLP Initialization [[openreview]](https://openreview.net/forum?id=P8YIphWNEGO) [[arxiv]](https://arxiv.org/abs/2210.00102) [[Slides]](https://ahxt.github.io/files/mlpinit_slides.pdf), by [Xiaotian Han](https://ahxt.github.io/), [Tong Zhao](https://tzhao.io/), [Yozen Liu](https://research.snap.com/team/yozen-liu/), [Xia Hu](https://cs.rice.edu/~xh37/index.html), and [Neil Shah](http://nshah.net/).
+Implementation for ICLR2023 paper MLPInit: Embarrassingly Simple GNN Training Acceleration with MLP Initialization [[openreview]](https://openreview.net/forum?id=P8YIphWNEGO) [[arxiv]](https://arxiv.org/abs/2210.00102) [[Slides]](https://ahxt.github.io/files/mlpinit_slides.pdf), by [Xiaotian Han](https://ahxt.github.io/), [Tong Zhao](https://tzhao.io/), [Yozen Liu](https://scholar.google.com/citations?user=i3U2JjEAAAAJ&hl), [Xia Hu](https://cs.rice.edu/~xh37/index.html), and [Neil Shah](http://nshah.net/).
 
 ## 1. Introduction
 
@@ -91,7 +91,7 @@ If you find our paper or code is useful for you research, please cite our paper.
 ## 7. Thanks to
 The GNN archtectures and training code are based on https://github.com/VITA-Group/Large_Scale_GCN_Benchmarking
 
-## 6. Contact
+## 6. Contact to
 Please contact to [Xiaotian Han](https://ahxt.github.io/) if you have any question about this code.
 
 
