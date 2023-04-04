@@ -88,10 +88,10 @@ If you find our paper or code is useful for you research, please cite our paper.
 }
 ```
 
-## 7. Thanks to
+## 6. Thanks to
 The GNN archtectures and training code are based on https://github.com/VITA-Group/Large_Scale_GCN_Benchmarking
 
-## 6. Contact to
+## 7. Contact to
 Please contact to [Xiaotian Han](https://ahxt.github.io/) if you have any question about this code.
 
 
